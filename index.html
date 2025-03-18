@@ -43,12 +43,35 @@
             const [animals, setAnimals] = useState([]);
             const [show, setShow] = useState(false);
             const [animalName, setAnimalName] = useState("");
+            const [isLoading, setIsLoading] = useState(false);
+            const [errorMessage, setErrorMessage] = useState("");
 
-            const addAnimal = () => {
-                if (!animalName) return;
-                setAnimals([...animals, animalName]);
-                setAnimalName("");
-                setShow(false);
+
+            const addAnimal = async () => {
+                if (!animalName.trim()) return; 
+                setIsLoading(true);
+                setErrorMessage("");
+                try {
+                    const response = await fetch(`https://boolean-spec-frontend.vercel.app/freetestapi/animals?search=${animalName}`);
+                    const [ animalData ] = await response.json();
+                    if (!animalData) {
+                        throw new Error("Nessun animale trovato");
+                    }
+                    const animal = {
+                        name: animalData.name || "Nome non trovato",
+                        description: animalData.description || "Descrizione non trovata",
+                        image: animalData.image || null
+                    }
+                    setAnimals([...animals, animal]);
+                } catch (error) {
+                    console.log((error));
+                    const message = error.message === "Nessun animale trovato" ? "Nessun animale trovato" : "Errore durante la ricerca dell'animale"
+                    setErrorMessage(message);
+                } finally {
+                    setIsLoading(false);
+                    setAnimalName("");
+                    setShow(false);
+                }
             };
 
             return (
@@ -56,10 +79,21 @@
                     <button onClick={() => setShow(true)}>Aggiungi Animale</button>
                     <details>
                         <summary>Animali</summary>
-                        <ul>
-                            {animals.map((a, i) =>
-                                <li key={i}>{a}</li>)}
-                        </ul>
+                        <div>
+                            {errorMessage && <p style={{color: "red"}}>{errorMessage}</p>}
+                            {animals.map((animal, i) =>
+                                <div className="card" key={i}>
+                                    <div>
+                                        <h3>{animal.name}</h3>
+                                        <p>{animal.description}</p>
+                                    </div>
+                                    {animal.image &&
+                                        <figure>
+                                            <img src={animal.image} alt={animal.name} />
+                                        </figure>
+                                    }
+                                </div>)}
+                        </div>
                     </details>
                     <Modal
                         show={show}
@@ -67,11 +101,14 @@
                         onConfirm={addAnimal}
                         title="Aggiungi Animale"
                         content={
-                            <input
-                                type="text"
-                                value={animalName}
-                                onChange={event => setAnimalName(event.target.value)}
-                            />
+                            <>
+                                <input
+                                    type="text"
+                                    value={animalName}
+                                    onChange={event => setAnimalName(event.target.value)}
+                                />
+                                {isLoading && <p>Caricando il risultato... </p>}
+                            </>
                         }
                     />
                 </>
